@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+.github/workflows/
+package.json
+package-lock.json
+.healignore
+scripts/heal/
+.env
+.env.example
