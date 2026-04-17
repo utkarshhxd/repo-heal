@@ -1,0 +1,9 @@
+{
+  "tag-pair": true,
+  "doctype-first": true,
+  "title-require": true,
+  "alt-require": true,
+  "attr-lowercase": true,
+  "tagname-lowercase": true,
+  "id-unique": true
+}
