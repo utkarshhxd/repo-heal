@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import difflib
 from html.parser import HTMLParser
 import json
@@ -19,6 +20,7 @@ from .config import BACKEND_ROOT, get_settings
 
 settings = get_settings()
 HTMLHINT_CONFIG = BACKEND_ROOT / "config" / "htmlhint.json"
+GEMINI_RETRY_STATUSES = {429, 500, 502, 503, 504}
 SKIP_DIRS = {".git", "node_modules", "dist", "build", ".next", "coverage"}
 STATIC_SUFFIXES = (".html", ".htm", ".css", ".js")
 KNOWN_HTML_TAGS = {
@@ -136,50 +138,82 @@ KNOWN_HTML_TAGS = {
 }
 
 
-def _configured_ollama_models() -> list[str]:
-    candidates = [item.strip() for item in settings.ollama_model.split(",") if item.strip()]
-    return candidates or ["qwen2.5-coder:14b"]
+def _configured_gemini_models() -> list[str]:
+    models = [model.strip() for model in settings.gemini_model.split(",") if model.strip()]
+    return models or ["gemini-2.5-flash"]
 
 
-async def _available_ollama_models() -> list[str]:
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.get(f"{settings.ollama_base_url}/api/tags")
-        response.raise_for_status()
-        payload = response.json()
-    return [item["name"] for item in payload.get("models", [])]
+def _extract_gemini_text(payload: dict[str, Any]) -> str:
+    candidates = payload.get("candidates") or []
+    if not candidates:
+        raise RuntimeError("Gemini returned no candidates")
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    text = "".join(part.get("text", "") for part in parts if isinstance(part, dict))
+    if not text.strip():
+        raise RuntimeError("Gemini returned an empty response")
+    return text.strip()
 
 
-async def _generate_with_ollama(prompt: str, *, force_json: bool) -> dict[str, Any]:
-    installed_models = await _available_ollama_models()
-    candidate_models = _configured_ollama_models()
-    fallback_models = [model for model in installed_models if model not in candidate_models]
-    last_error: Exception | None = None
+def _parse_json_response(text: str) -> dict[str, Any]:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    return json.loads(cleaned)
 
-    for model in candidate_models + fallback_models:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                print("\n=== OLLAMA PROMPT START ===\n")
-                print(prompt)
-                print("\n=== OLLAMA PROMPT END ===\n")
-                payload: dict[str, Any] = {
-                    "model": model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {"temperature": 0.1},
-                }
-                if force_json:
-                    payload["format"] = "json"
-                response = await client.post(f"{settings.ollama_base_url}/api/generate", json=payload)
-                response.raise_for_status()
-                body = response.json()
-                parsed = json.loads(body["response"])
-                parsed["_model"] = model
-                return parsed
-            except Exception as exc:
-                last_error = exc
-                continue
 
-    raise RuntimeError(f"Ollama generation failed for all candidate models. Last error: {last_error}")
+async def _generate_with_gemini(prompt: str, *, force_json: bool) -> dict[str, Any]:
+    if not settings.gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY is not configured")
+
+    payload: dict[str, Any] = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.1,
+        },
+    }
+    if force_json:
+        payload["generationConfig"]["responseMimeType"] = "application/json"
+
+    last_error: str | None = None
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        for model in _configured_gemini_models():
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            for attempt in range(1, 4):
+                try:
+                    response = await client.post(
+                        url,
+                        params={"key": settings.gemini_api_key},
+                        json=payload,
+                    )
+                    if response.status_code in GEMINI_RETRY_STATUSES and attempt < 3:
+                        await asyncio.sleep(2 * attempt)
+                        continue
+                    response.raise_for_status()
+                    body = response.json()
+                    parsed = _parse_json_response(_extract_gemini_text(body))
+                    parsed["_model"] = model
+                    return parsed
+                except httpx.HTTPStatusError as exc:
+                    status_code = exc.response.status_code
+                    response_text = exc.response.text.strip()
+                    last_error = f"Gemini model {model} returned HTTP {status_code}: {response_text[:300]}"
+                    if status_code in GEMINI_RETRY_STATUSES and attempt < 3:
+                        await asyncio.sleep(2 * attempt)
+                        continue
+                    break
+                except httpx.HTTPError as exc:
+                    last_error = f"Gemini model {model} request failed: {exc.__class__.__name__}"
+                    if attempt < 3:
+                        await asyncio.sleep(2 * attempt)
+                        continue
+                    break
+                except (KeyError, json.JSONDecodeError, RuntimeError) as exc:
+                    last_error = f"Gemini model {model} returned an unusable response: {exc}"
+                    break
+
+    raise RuntimeError(last_error or "Gemini API request failed")
 
 
 def _tool_bin(name: str) -> str:
@@ -710,7 +744,7 @@ Snippet:
 {snippet}
 """.strip()
 
-    return await _generate_with_ollama(prompt, force_json=True)
+    return await _generate_with_gemini(prompt, force_json=True)
 
 
 async def generate_llm_file_rewrite(issue: dict[str, Any], file_path: Path) -> str:
@@ -737,7 +771,7 @@ File content:
 {content}
 """.strip()
 
-    parsed = await _generate_with_ollama(prompt, force_json=True)
+    parsed = await _generate_with_gemini(prompt, force_json=True)
     return parsed["replacement"]
 
 

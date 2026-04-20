@@ -78,7 +78,7 @@ async def github_callback(code: str | None = None, state: str | None = None, err
         session_id,
         httponly=True,
         secure=settings.session_cookie_secure,
-        samesite="lax",
+        samesite=settings.session_cookie_samesite,
         max_age=60 * 60 * 24 * 7,
     )
     return response
@@ -90,7 +90,11 @@ async def logout(request: Request) -> Response:
     if session_id:
         db.delete_session(session_id)
     response = JSONResponse({"ok": True})
-    response.delete_cookie(settings.session_cookie_name)
+    response.delete_cookie(
+        settings.session_cookie_name,
+        secure=settings.session_cookie_secure,
+        samesite=settings.session_cookie_samesite,
+    )
     return response
 
 

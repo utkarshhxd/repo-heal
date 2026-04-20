@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: repo-agent-backend
+    env: docker
+    rootDir: backend
+    plan: free
+    healthCheckPath: /api/health
+    disk:
+      name: repo-agent-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CALLBACK_URL
+        sync: false
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_SAMESITE
+        value: none
+      - key: DATABASE_PATH
+        value: /app/data/app.db
+      - key: WORKSPACE_ROOT
+        value: /app/data/workspaces
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash,gemini-2.0-flash
+      - key: GIT_AUTHOR_NAME
+        value: Repo Agent
+      - key: GIT_AUTHOR_EMAIL
+        value: repo-agent@local.dev

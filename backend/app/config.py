@@ -34,10 +34,11 @@ class Settings:
     github_callback_url: str
     session_cookie_name: str
     session_cookie_secure: bool
+    session_cookie_samesite: str
     database_path: Path
     workspace_root: Path
-    ollama_base_url: str
-    ollama_model: str
+    gemini_api_key: str
+    gemini_model: str
     git_author_name: str
     git_author_email: str
 
@@ -55,10 +56,11 @@ def get_settings() -> Settings:
         github_callback_url=os.getenv("GITHUB_CALLBACK_URL", "http://localhost:8000/auth/github/callback"),
         session_cookie_name=os.getenv("SESSION_COOKIE_NAME", "repo_agent_session"),
         session_cookie_secure=_to_bool(os.getenv("SESSION_COOKIE_SECURE"), default=False),
+        session_cookie_samesite=os.getenv("SESSION_COOKIE_SAMESITE", "lax"),
         database_path=database_path,
         workspace_root=workspace_root,
-        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        ollama_model=os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b"),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         git_author_name=os.getenv("GIT_AUTHOR_NAME", "Repo Agent"),
         git_author_email=os.getenv("GIT_AUTHOR_EMAIL", "repo-agent@local.dev"),
     )
