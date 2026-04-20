@@ -20,7 +20,7 @@ BACKEND_URL=https://YOUR-RENDER-SERVICE.onrender.com
 FRONTEND_URL=https://YOUR-VERCEL-PROJECT.vercel.app
 GITHUB_CLIENT_ID=your_github_oauth_app_client_id
 GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
-GITHUB_CALLBACK_URL=https://YOUR-RENDER-SERVICE.onrender.com/auth/github/callback
+GITHUB_CALLBACK_URL=https://YOUR-VERCEL-PROJECT.vercel.app/auth/github/callback
 SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAMESITE=none
 DATABASE_PATH=/app/data/app.db
@@ -45,8 +45,10 @@ Create a Vercel project from this repository.
 Set this environment variable:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://YOUR-RENDER-SERVICE.onrender.com
+BACKEND_URL=https://YOUR-RENDER-SERVICE.onrender.com
 ```
+
+Do not set `NEXT_PUBLIC_API_BASE_URL` on Vercel for the proxied production setup. The frontend should call same-origin `/api` and `/auth` routes so browser cookies are stored for the Vercel app domain.
 
 Redeploy the frontend after setting the final Render backend URL.
 
@@ -55,7 +57,7 @@ Redeploy the frontend after setting the final Render backend URL.
 In your GitHub OAuth App, use:
 
 - Homepage URL: `https://YOUR-VERCEL-PROJECT.vercel.app`
-- Authorization callback URL: `https://YOUR-RENDER-SERVICE.onrender.com/auth/github/callback`
+- Authorization callback URL: `https://YOUR-VERCEL-PROJECT.vercel.app/auth/github/callback`
 
 The callback URL must exactly match `GITHUB_CALLBACK_URL` on Render.
 

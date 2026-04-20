@@ -46,6 +46,11 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/")
+async def root() -> dict[str, str]:
+    return {"status": "ok", "service": "Repo Agent API"}
+
+
 @app.get("/auth/github/login")
 async def github_login() -> RedirectResponse:
     if not settings.github_client_id or not settings.github_client_secret:
