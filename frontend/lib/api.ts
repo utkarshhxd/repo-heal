@@ -42,7 +42,26 @@ export type Job = {
   updated_at: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+function normalizeApiBaseUrl() {
+  const configuredBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim();
+
+  if (!configuredBaseUrl) {
+    return "";
+  }
+
+  if (typeof window === "undefined") {
+    return configuredBaseUrl.replace(/\/$/, "");
+  }
+
+  try {
+    const resolved = new URL(configuredBaseUrl, window.location.origin);
+    return resolved.origin === window.location.origin ? resolved.pathname.replace(/\/$/, "") : "";
+  } catch {
+    return "";
+  }
+}
+
+const API_BASE_URL = normalizeApiBaseUrl();
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {

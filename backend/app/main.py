@@ -19,7 +19,7 @@ app = FastAPI(title="Repo Agent API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url],
+    allow_origins=settings.frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,6 +84,7 @@ async def github_callback(code: str | None = None, state: str | None = None, err
         httponly=True,
         secure=settings.session_cookie_secure,
         samesite=settings.session_cookie_samesite,
+        domain=settings.session_cookie_domain,
         max_age=60 * 60 * 24 * 7,
     )
     return response
@@ -99,6 +100,7 @@ async def logout(request: Request) -> Response:
         settings.session_cookie_name,
         secure=settings.session_cookie_secure,
         samesite=settings.session_cookie_samesite,
+        domain=settings.session_cookie_domain,
     )
     return response
 
