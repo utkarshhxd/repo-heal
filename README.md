@@ -117,6 +117,12 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
+## Share With A Client From Your Laptop
+
+You can share this app without deploying it by exposing your local frontend and backend through `ngrok`.
+
+For the exact tunnel-based client demo setup, see [CLIENT_DEMO.md](/c:/Users/Utkarsh/Desktop/p1/CLIENT_DEMO.md).
+
 ## How The App Works
 
 1. Sign in with GitHub from the frontend.

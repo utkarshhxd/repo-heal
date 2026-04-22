@@ -176,7 +176,7 @@ export default function HomePage() {
   const pollAbortRef = useRef(false);
 
   const connected = Boolean(user);
-  const connectUrl = `${api.baseUrl}/auth/github/login`;
+  const connectUrl = "/auth/github/login";
 
   useEffect(() => {
     if (chatRef.current) {
